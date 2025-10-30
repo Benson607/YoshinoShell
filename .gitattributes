@@ -1,0 +1,33 @@
+# Set default behavior to LF
+* text eol=lf
+
+# Ensure binary files are not modified
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.dll binary
+*.exe binary
+*.pdf binary
+
+# Source files
+*.cs text diff=csharp
+*.xaml text
+*.xml text
+*.config text
+*.json text
+*.yml text
+*.yaml text
+*.md text
+*.sh text
+*.ps1 text
+*.bat text eol=crlf
+
+# Visual Studio project and solution files
+*.sln text
+*.csproj text
+*.vbproj text
+*.vcxproj text
+*.props text
+*.targets text
