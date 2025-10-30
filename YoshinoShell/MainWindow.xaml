@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="YoshinoShell" Height="500" Width="1034" Closing="CloseWindow">
     <Grid Background="#FF353535" Focusable="True">
-        <TextBox HorizontalAlignment="Left" Margin="215,45,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="528" Background="{x:Null}" Foreground="White" Height="40" MaxLines="1" x:Name="CommandLine" FontSize="28" PreviewKeyDown="CommandLineBoxPreviewKeyDown"/>
+        <TextBox HorizontalAlignment="Left" Margin="215,45,0,0" VerticalAlignment="Top" Width="528" Background="{x:Null}" Foreground="White" Height="40" MaxLines="1" x:Name="CommandLine" FontSize="28" PreviewKeyDown="CommandLineBoxPreviewKeyDown" HorizontalScrollBarVisibility="Hidden"/>
         <TextBox HorizontalAlignment="Left" Margin="215,90,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="575" Height="356" Foreground="White" Background="{x:Null}" x:Name="ResultBox" FontSize="16" IsReadOnly="True"/>
         <Button Content="Enter" HorizontalAlignment="Left" Margin="748,45,0,0" VerticalAlignment="Top" Height="40" Width="42" x:Name="EnterButton" Click="EnterButton_Click"/>
         <Image x:Name="UserImage" Margin="10,10,0,0" Source="/yoshino.png" Stretch="Fill" HorizontalAlignment="Left" VerticalAlignment="Top" Width="200" Height="200"/>

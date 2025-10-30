@@ -6,13 +6,24 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <StartupObject></StartupObject>
+    <ApplicationIcon>yoshino.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Sounds\ciallo.wav" />
+    <None Remove="Sounds\koihikoifuen.wav" />
     <None Remove="yoshino.png" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Sounds\ciallo.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Sounds\koihikoifuen.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="yoshino.ico" />
     <Content Include="yoshino.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

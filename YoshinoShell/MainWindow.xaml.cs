@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace YoshinoShell
 {
@@ -11,6 +12,8 @@ namespace YoshinoShell
     public partial class MainWindow : Window
     {
         private Yoshino yoshino;
+        private SoundLoader sound_loader;
+        private MediaPlayer BGMPlayer;
 
         public MainWindow()
         {
@@ -22,6 +25,18 @@ namespace YoshinoShell
             this.Focus();
             
             yoshino.Run("pwd");
+
+            sound_loader = new SoundLoader();
+
+            sound_loader.Load("ciallo", "Sounds/ciallo.wav");
+            sound_loader.Load("koihikoifuen", "Sounds/koihikoifuen.wav");
+
+            sound_loader.Play("ciallo");
+
+            BGMPlayer = new MediaPlayer();
+            BGMPlayer.Open(new Uri("Sounds/koihikoifuen.wav", UriKind.RelativeOrAbsolute));
+            BGMPlayer.Volume = 0.2;
+            BGMPlayer.Play();
         }
 
         private void CommandLineBoxPreviewKeyDown(object sender, KeyEventArgs e)
