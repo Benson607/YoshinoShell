@@ -21,6 +21,8 @@ namespace YoshinoShell
 
         private readonly Runspace _shared_runspace;
 
+        private PowerShell? CurrentPowershell;
+
         public Yoshino(Action update_func)
         {
             ResultUpdate = update_func;
@@ -37,12 +39,19 @@ namespace YoshinoShell
             _shared_runspace.Open();
 
             CurrentDir = current_dir_box;
+
+            UpdatePWD();
         }
 
         public string GetCurrentCommand()
         {
             lock (_lock)
             {
+                if (LookingIndex < 0 || LookingIndex >= Histories.Count)
+                {
+                    return "";
+                }
+
                 return Histories[LookingIndex].command;
             }
         }
@@ -51,6 +60,11 @@ namespace YoshinoShell
         {
             lock (_lock)
             {
+                if (LookingIndex < 0 || LookingIndex >= Histories.Count)
+                {
+                    return "";
+                }
+
                 return Histories[LookingIndex].result;
             }
         }
@@ -107,14 +121,53 @@ namespace YoshinoShell
             await ExecutePowerShellAsync(command, Looking);
         }
 
+        public void Execute(String command)
+        {
+            try
+            {
+                using (var power_shell = PowerShell.Create())
+                {
+                    CurrentPowershell = power_shell;
+                    power_shell.Runspace = _shared_runspace;
+                    var result = power_shell.AddScript(command).Invoke();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.Write($"[EXCEPTION] {e.Message}\n");
+            }
+            finally
+            {
+                CurrentPowershell = null;
+            }
+
+            UpdatePWD();
+        }
+
+        public void Interrupt()
+        {
+            if (CurrentPowershell != null && CurrentPowershell.InvocationStateInfo.State == PSInvocationState.Running)
+            {
+                try
+                {
+                    CurrentPowershell.Stop();
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine("error when interrupt: " + e.Message);
+                }
+            }
+        }
+
         private async Task ExecutePowerShellAsync(string command, bool Looking)
         {
             await Task.Run(() =>
             {
                 using (var power_shell = PowerShell.Create())
                 {
+                    CurrentPowershell = power_shell;
                     power_shell.Runspace = _shared_runspace;
-                    power_shell.AddScript(command);
+                    power_shell.AddScript($"{command} 2>&1");
 
                     ShellHistory history = AddNewHistory(command);
                     
@@ -123,55 +176,69 @@ namespace YoshinoShell
                         SwitchLooking(Histories.Count - 1);
                     }
 
+                    var output = new PSDataCollection<PSObject>();
+                    output.DataAdded += (s, e) =>
+                    {
+                        if (s is PSDataCollection<PSObject> outputs && e.Index < outputs.Count)
+                        {
+                            var text = outputs[e.Index]?.ToString();
+                            if (!string.IsNullOrEmpty(text))
+                            {
+                                history.AppendResult(text + "\n");
+                            }
+                        }
+                    };
+
                     power_shell.Streams.Error.DataAdded += (s, e) =>
                     {
                         if (s is PSDataCollection<ErrorRecord> errors && e.Index < errors.Count)
                         {
-                            var err = ((PSDataCollection<ErrorRecord>)s)[e.Index];
+                            var err = errors[e.Index];
                             history.AppendResult($"[ERROR] {err}\n");
                         }
                     };
 
-                    power_shell.Streams.Information.DataAdded += (s, e) =>
-                    {
-                        if (s is PSDataCollection<InformationRecord> infos && e.Index < infos.Count)
-                        {
-                            var info = ((PSDataCollection<InformationRecord>)s)[e.Index];
-                            history.AppendResult($"[INFO] {info}\n");
-                        }
-                    };
-
                     try
                     {
-                        Collection<PSObject> results = power_shell.Invoke();
-
-                        StringBuilder string_builder = new();
-                        foreach (var item in results)
-                        {
-                            string_builder.AppendLine(item.ToString());
-                        }
-
-                        history.AppendResult(string_builder.ToString());
+                        var asyncResult = power_shell.BeginInvoke<PSObject, PSObject>(null, output);
+                        power_shell.EndInvoke(asyncResult);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        history.AppendResult($"[EXCEPTION] {ex.Message}\n");
+                        history.AppendResult($"[EXCEPTION] {e.Message}\n");
+                    }
+                    finally
+                    {
+                        CurrentPowershell = null;
                     }
 
-                    try
-                    {
-                        power_shell.Commands.Clear();
-                        var result = power_shell.AddScript("Get-Location").Invoke();
-                        string current_dir = result[0].ToString();
-
-                        CurrentDir.Dispatcher.Invoke(() => CurrentDir.Text = current_dir);
-                    }
-                    catch
-                    {
-                        Debug.WriteLine("can not get current dir");
-                    }
+                    UpdatePWD();
                 }
             });
+        }
+
+        private void UpdatePWD()
+        {
+            try
+            {
+                using (var power_shell = PowerShell.Create())
+                {
+                    CurrentPowershell = power_shell;
+                    power_shell.Runspace = _shared_runspace;
+                    var result = power_shell.AddScript("Get-Location").Invoke();
+                    string current_pwd = result[0].ToString();
+
+                    CurrentDir.Dispatcher.Invoke(() => CurrentDir.Text = current_pwd);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.Write($"[EXCEPTION] {e.Message}\n");
+            }
+            finally
+            {
+                CurrentPowershell = null;
+            }
         }
 
         private ShellHistory AddNewHistory(string command)

@@ -21,22 +21,37 @@ namespace YoshinoShell
 
             yoshino = new Yoshino(ResultUpdate, CurrentPWD);
 
+            ReadArgs();
+
             this.KeyDown += MainWindowKeyDown;
             this.Focus();
             
-            yoshino.Run("pwd");
-
             sound_loader = new SoundLoader();
 
             sound_loader.Load("ciallo", "Sounds/ciallo.wav");
-            sound_loader.Load("koihikoifuen", "Sounds/koihikoifuen.wav");
-
             sound_loader.Play("ciallo");
 
             BGMPlayer = new MediaPlayer();
             BGMPlayer.Open(new Uri("Sounds/koihikoifuen.wav", UriKind.RelativeOrAbsolute));
             BGMPlayer.Volume = 0.2;
             BGMPlayer.Play();
+        }
+
+        private void ReadArgs()
+        {
+            string[] args = Environment.GetCommandLineArgs();
+
+            for (int i = 1; i < args.Length; i++)
+            {
+                if (args[i] == "-p")
+                {
+                    if (i + 1 < args.Length)
+                    {
+                        yoshino.Execute($"Set-Location {args[++i]}");
+                    }
+                }
+            }
+
         }
 
         private void CommandLineBoxPreviewKeyDown(object sender, KeyEventArgs e)
@@ -52,6 +67,10 @@ namespace YoshinoShell
                 yoshino.HistoryForward();
                 CommandLineUpdate();
                 ResultUpdate();
+            }
+            else if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control && e.Key == Key.C)
+            {
+                yoshino.Interrupt();
             }
         }
 
@@ -89,6 +108,7 @@ namespace YoshinoShell
             }
 
             CommandLine.Text = "";
+            ResultBox.Text = "";
             yoshino.Run(command);
         }
 
