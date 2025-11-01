@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
@@ -9,7 +9,9 @@ namespace YoshinoShell
 {
     internal class Yoshino
     {
-        private TextBox CurrentDir = new TextBox();
+        public TextBox CommandLineTextBox = new TextBox();
+        public TextBox PWDTextBox = new TextBox();
+        public TextBox UIBox = new TextBox();
 
         public List<ShellHistory> Histories = new List<ShellHistory>();
 
@@ -17,30 +19,35 @@ namespace YoshinoShell
 
         private object _lock = new object();
 
-        private Action ResultUpdate = () => { };
-
         private readonly Runspace _shared_runspace;
 
         private PowerShell? CurrentPowershell;
 
-        public Yoshino(Action update_func)
+        public Yoshino(TextBox command_line_text_box, TextBox ui_box, TextBox pwd_text_box)
         {
-            ResultUpdate = update_func;
+            CommandLineTextBox = command_line_text_box;
+            UIBox = ui_box;
+            PWDTextBox = pwd_text_box;
 
-            _shared_runspace = RunspaceFactory.CreateRunspace();
+            var ui = new YoshinoUI
+            (
+                s => UIBox.Dispatcher.Invoke(() => AppendUIText("[UI data] " + s + "\n")),
+                    () =>
+                    {
+                        return WaitInput();
+                    }
+            );
+
+            var host = new YoshinoHost(ui);
+            _shared_runspace = RunspaceFactory.CreateRunspace(host);
             _shared_runspace.Open();
+
+            UpdatePWDText();
         }
 
-        public Yoshino(Action update_func, TextBox current_dir_box)
+        public string WaitInput()
         {
-            ResultUpdate = update_func;
-
-            _shared_runspace = RunspaceFactory.CreateRunspace();
-            _shared_runspace.Open();
-
-            CurrentDir = current_dir_box;
-
-            UpdatePWD();
+            return "";
         }
 
         public string GetCurrentCommand()
@@ -77,6 +84,9 @@ namespace YoshinoShell
             }
 
             SwitchLooking(LookingIndex + 1);
+
+            UpdateCommandLineText();
+            UpdateUIText();
         }
 
         public void HistoryBackward()
@@ -87,6 +97,9 @@ namespace YoshinoShell
             }
 
             SwitchLooking(LookingIndex - 1);
+
+            UpdateCommandLineText();
+            UpdateUIText();
         }
 
         public void SwitchLooking(int index)
@@ -109,6 +122,54 @@ namespace YoshinoShell
             }
 
             LookingIndex = index;
+        }
+        public void UpdateCommandLineText()
+        {
+            CommandLineTextBox.Text = GetCurrentCommand();
+        }
+
+        public void UpdatePWDText()
+        {
+            try
+            {
+                using (var power_shell = PowerShell.Create())
+                {
+                    CurrentPowershell = power_shell;
+                    power_shell.Runspace = _shared_runspace;
+                    var result = power_shell.AddScript("Get-Location").Invoke();
+                    string current_pwd = result[0].ToString();
+
+                    PWDTextBox.Dispatcher.Invoke(() => PWDTextBox.Text = current_pwd);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.Write($"[EXCEPTION] {e.Message}\n");
+            }
+            finally
+            {
+                CurrentPowershell = null;
+            }
+        }
+
+        public void UpdateUIText()
+        {
+            UIBox.Text = GetCurrentResult();
+        }
+
+        public void SetUIText(string text)
+        {
+            UIBox.Text = text;
+        }
+
+        public void AppendUIText(string text)
+        {
+            UIBox.AppendText(text);
+        }
+
+        public void ClearUIText()
+        {
+            UIBox.Text = "";
         }
 
         public async void Run(String command, bool Looking = true)
@@ -141,7 +202,7 @@ namespace YoshinoShell
                 CurrentPowershell = null;
             }
 
-            UpdatePWD();
+            UpdatePWDText();
         }
 
         public void Interrupt()
@@ -167,36 +228,18 @@ namespace YoshinoShell
                 {
                     CurrentPowershell = power_shell;
                     power_shell.Runspace = _shared_runspace;
-                    power_shell.AddScript($"{command} 2>&1");
+                    power_shell.AddScript($"{command}");
 
                     ShellHistory history = AddNewHistory(command);
-                    
+
                     if (Looking)
                     {
                         SwitchLooking(Histories.Count - 1);
                     }
 
-                    var output = new PSDataCollection<PSObject>();
-                    output.DataAdded += (s, e) =>
-                    {
-                        if (s is PSDataCollection<PSObject> outputs && e.Index < outputs.Count)
-                        {
-                            var text = outputs[e.Index]?.ToString();
-                            if (!string.IsNullOrEmpty(text))
-                            {
-                                history.AppendResult(text + "\n");
-                            }
-                        }
-                    };
+                    var output = BindPowerShellDataAddedEvent(power_shell, history);
 
-                    power_shell.Streams.Error.DataAdded += (s, e) =>
-                    {
-                        if (s is PSDataCollection<ErrorRecord> errors && e.Index < errors.Count)
-                        {
-                            var err = errors[e.Index];
-                            history.AppendResult($"[ERROR] {err}\n");
-                        }
-                    };
+                    BindPowerShellStreamEvent(power_shell, history);
 
                     try
                     {
@@ -212,38 +255,80 @@ namespace YoshinoShell
                         CurrentPowershell = null;
                     }
 
-                    UpdatePWD();
+                    UpdatePWDText();
                 }
             });
         }
 
-        private void UpdatePWD()
+        private PSDataCollection<PSObject> BindPowerShellDataAddedEvent(PowerShell power_shell, ShellHistory history)
         {
-            try
+            var output = new PSDataCollection<PSObject>();
+            output.DataAdded += (s, e) =>
             {
-                using (var power_shell = PowerShell.Create())
+                if (s is PSDataCollection<PSObject> outputs && e.Index < outputs.Count)
                 {
-                    CurrentPowershell = power_shell;
-                    power_shell.Runspace = _shared_runspace;
-                    var result = power_shell.AddScript("Get-Location").Invoke();
-                    string current_pwd = result[0].ToString();
-
-                    CurrentDir.Dispatcher.Invoke(() => CurrentDir.Text = current_pwd);
+                    var text = outputs[e.Index]?.ToString();
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        history.AppendResult("[DataAdded] " + text + "\n");
+                    }
                 }
-            }
-            catch (Exception e)
+            };
+
+            return output;
+        }
+
+        private void BindPowerShellStreamEvent(PowerShell power_shell, ShellHistory history)
+        {
+            power_shell.Streams.Error.DataAdded += (s, e) =>
             {
-                Debug.Write($"[EXCEPTION] {e.Message}\n");
-            }
-            finally
+                if (s is PSDataCollection<ErrorRecord> errors && e.Index < errors.Count)
+                {
+                    var err = errors[e.Index];
+                    history.AppendResult($"[ERROR] {err}\n");
+                }
+            };
+
+            power_shell.Streams.Warning.DataAdded += (s, e) =>
             {
-                CurrentPowershell = null;
-            }
+                if (s is PSDataCollection<WarningRecord> warnings && e.Index < warnings.Count)
+                {
+                    var warn = warnings[e.Index];
+                    history.AppendResult($"[WARNING] {warn.Message}\n");
+                }
+            };
+
+            power_shell.Streams.Verbose.DataAdded += (s, e) =>
+            {
+                if (s is PSDataCollection<VerboseRecord> verbose && e.Index < verbose.Count)
+                {
+                    var msg = verbose[e.Index];
+                    history.AppendResult($"[VERBOSE] {msg.Message}\n");
+                }
+            };
+
+            power_shell.Streams.Debug.DataAdded += (s, e) =>
+            {
+                if (s is PSDataCollection<DebugRecord> debug && e.Index < debug.Count)
+                {
+                    var msg = debug[e.Index];
+                    history.AppendResult($"[DEBUG] {msg.Message}\n");
+                }
+            };
+
+            power_shell.Streams.Information.DataAdded += (s, e) =>
+            {
+                if (s is PSDataCollection<InformationRecord> infos && e.Index < infos.Count)
+                {
+                    var msg = infos[e.Index];
+                    history.AppendResult($"[INFO] {msg.MessageData}\n");
+                }
+            };
         }
 
         private ShellHistory AddNewHistory(string command)
         {
-            ShellHistory history = new ShellHistory(ResultUpdate, command, "");
+            ShellHistory history = new ShellHistory(UpdateUIText, command, "");
 
             lock (_lock)
             {
@@ -271,8 +356,7 @@ namespace YoshinoShell
                 Debug.WriteLine($"Error closing runspace: {ex.Message}");
             }
 
-            ResultUpdate = () => { };
             Histories.Clear();
         }
-    } 
+    }
 }

@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -19,7 +19,7 @@ namespace YoshinoShell
         {
             InitializeComponent();
 
-            yoshino = new Yoshino(ResultUpdate, CurrentPWD);
+            yoshino = new Yoshino(CommandLine, ResultBox, CurrentPWD);
 
             ReadArgs();
 
@@ -28,13 +28,13 @@ namespace YoshinoShell
             
             sound_loader = new SoundLoader();
 
-            sound_loader.Load("ciallo", "Sounds/ciallo.wav");
-            sound_loader.Play("ciallo");
+            //sound_loader.Load("ciallo", "Sounds/ciallo.wav");
+            //sound_loader.Play("ciallo");
 
             BGMPlayer = new MediaPlayer();
-            BGMPlayer.Open(new Uri("Sounds/koihikoifuen.wav", UriKind.RelativeOrAbsolute));
-            BGMPlayer.Volume = 0.2;
-            BGMPlayer.Play();
+            //BGMPlayer.Open(new Uri("Sounds/koihikoifuen.wav", UriKind.RelativeOrAbsolute));
+            //BGMPlayer.Volume = 0.2;
+            //BGMPlayer.Play();
         }
 
         private void ReadArgs()
@@ -51,7 +51,6 @@ namespace YoshinoShell
                     }
                 }
             }
-
         }
 
         private void CommandLineBoxPreviewKeyDown(object sender, KeyEventArgs e)
@@ -59,14 +58,12 @@ namespace YoshinoShell
             if (e.Key == Key.Up)
             {
                 yoshino.HistoryBackward();
-                CommandLineUpdate();
-                ResultUpdate();
+                CommandLine.CaretIndex = CommandLine.Text.Length;
             }
             else if (e.Key == Key.Down)
             {
                 yoshino.HistoryForward();
-                CommandLineUpdate();
-                ResultUpdate();
+                CommandLine.CaretIndex = CommandLine.Text.Length;
             }
             else if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control && e.Key == Key.C)
             {
@@ -87,14 +84,6 @@ namespace YoshinoShell
                     ResultBox.Text = yoshino.Histories[yoshino.Histories.Count - 1].result;
                 }
             }
-            else if (e.Key == Key.Up)
-            {
-                Debug.WriteLine("up");
-            }
-            else if (e.Key == Key.Down)
-            {
-                Debug.WriteLine("down");
-            }
         }
 
         private void EnterButton_Click(object sender, RoutedEventArgs e)
@@ -110,16 +99,6 @@ namespace YoshinoShell
             CommandLine.Text = "";
             ResultBox.Text = "";
             yoshino.Run(command);
-        }
-
-        private void CommandLineUpdate()
-        {
-            CommandLine.Text = yoshino.GetCurrentCommand();
-        }
-
-        private void ResultUpdate()
-        {
-            ResultBox.Text = yoshino.GetCurrentResult();
         }
 
         private void Shutdown()
