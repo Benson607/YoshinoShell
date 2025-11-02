@@ -5,15 +5,23 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:YoshinoShell"
         mc:Ignorable="d"
-        Title="YoshinoShell" Height="500" Width="1034" Closing="CloseWindow">
-    <Grid Background="#FF353535" Focusable="True">
-        <TextBox HorizontalAlignment="Left" Margin="215,45,0,0" VerticalAlignment="Top" Width="528" Background="{x:Null}" Foreground="White" Height="40" MaxLines="1" x:Name="CommandLine" FontSize="28" PreviewKeyDown="CommandLineBoxPreviewKeyDown" HorizontalScrollBarVisibility="Hidden"/>
-        <TextBox HorizontalAlignment="Left" Margin="215,90,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="575" Height="356" Foreground="White" Background="{x:Null}" x:Name="ResultBox" FontSize="16" IsReadOnly="True"/>
-        <Button Content="Enter" HorizontalAlignment="Left" Margin="748,45,0,0" VerticalAlignment="Top" Height="40" Width="42" x:Name="EnterButton" Click="EnterButton_Click"/>
+        Title="YoshinoShell" Height="600" Width="1200" Closing="CloseWindow">
+    <Grid Background="#FF191919" Focusable="True">
         <Image x:Name="UserImage" Margin="10,10,0,0" Source="/yoshino.png" Stretch="Fill" HorizontalAlignment="Left" VerticalAlignment="Top" Width="200" Height="200"/>
-        <TextBox HorizontalAlignment="Left" Margin="215,10,0,0" VerticalAlignment="Top" Width="575" Background="{x:Null}" Foreground="White" Height="30" MaxLines="1" x:Name="CurrentPWD" FontSize="24" IsReadOnly="True"/>
-        <ListBox x:Name="SuggestionBox" d:ItemsSource="{d:SampleData ItemCount=5}" Margin="795,45,0,0" Background="{x:Null}" Foreground="White" HorizontalAlignment="Left" VerticalAlignment="Top" Height="401" Width="150"/>
-        <Label Content="Suggestion" HorizontalAlignment="Left" Margin="801,5,0,0" VerticalAlignment="Top" Foreground="White" FontSize="24"/>
-
+        <TextBox Margin="215,10,410,0" VerticalAlignment="Top" Background="{x:Null}" Foreground="White" Height="30" MaxLines="1" x:Name="CurrentPWD" FontSize="24" IsReadOnly="True"/>
+        <ListBox x:Name="SuggestionBox" d:ItemsSource="{d:SampleData ItemCount=5}" Margin="0,45,255,0" Background="{x:Null}" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Top" Height="400" Width="150"/>
+        <Label Content="Suggestion" HorizontalAlignment="Right" Margin="0,5,261,0" VerticalAlignment="Top" Foreground="White" FontSize="24"/>
+        <ListBox x:Name="HistoryBox" d:ItemsSource="{d:SampleData ItemCount=5}" Margin="0,45,100,0" Background="{x:Null}" Foreground="White" HorizontalAlignment="Right" Height="400" Width="150" VerticalAlignment="Top"/>
+        <Label Content="History" HorizontalAlignment="Right" Margin="0,5,130,0" VerticalAlignment="Top" Foreground="White" FontSize="24"/>
+        <Grid x:Name="CommunicationPanel" Margin="215,45,410,10">
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <ScrollViewer x:Name="ResultBoxSroll" VerticalScrollBarVisibility="Auto">
+                <TextBox TextWrapping="Wrap" Foreground="White" Background="{x:Null}" x:Name="ResultBox" FontSize="16" IsReadOnly="True" VerticalScrollBarVisibility="Auto"/>
+            </ScrollViewer>
+            <TextBox PreviewKeyDown="CommandLineBoxPreviewKeyDown" TextChanged="CommandLineBoxTextChanged" x:Name="CommandLine" MaxLines="1" Height="24" HorizontalScrollBarVisibility="Hidden" Foreground="White" Background="{x:Null}" TextWrapping="Wrap" AcceptsReturn="True" FontSize="20" Grid.Row="1" VerticalAlignment="Bottom" CaretBrush="White"/>
+        </Grid>
     </Grid>
 </Window>

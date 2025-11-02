@@ -19,11 +19,10 @@ namespace YoshinoShell
         {
             InitializeComponent();
 
-            yoshino = new Yoshino(CommandLine, ResultBox, CurrentPWD);
+            yoshino = new Yoshino(CommandLine, ResultBox, CurrentPWD, HistoryBox);
 
             ReadArgs();
 
-            this.KeyDown += MainWindowKeyDown;
             this.Focus();
             
             sound_loader = new SoundLoader();
@@ -55,38 +54,44 @@ namespace YoshinoShell
 
         private void CommandLineBoxPreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Up)
+            if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Up)
             {
                 yoshino.HistoryBackward();
                 CommandLine.CaretIndex = CommandLine.Text.Length;
             }
-            else if (e.Key == Key.Down)
+            else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Down)
             {
                 yoshino.HistoryForward();
                 CommandLine.CaretIndex = CommandLine.Text.Length;
             }
-            else if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control && e.Key == Key.C)
+            else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.C)
             {
                 yoshino.Interrupt();
             }
+            else if (Keyboard.Modifiers == ModifierKeys.Shift && e.Key == Key.Enter)
+            {
+                e.Handled = true;
+
+                int origin_caret = CommandLine.CaretIndex;
+
+                CommandLine.Text = CommandLine.Text.Insert(origin_caret, Environment.NewLine);
+                CommandLine.CaretIndex = origin_caret + Environment.NewLine.Length;
+            }
+            else if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+
+                EnterCommand();
+            }
         }
 
-        private void MainWindowKeyDown(object sender, KeyEventArgs e)
+        private void CommandLineBoxTextChanged(object sender, EventArgs e)
         {
-            if (e.Key == Key.Enter)
-            {
-                EnterButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            }
-            else if (e.Key == Key.Tab)
-            {
-                if (yoshino.Histories.Count > 0)
-                {
-                    ResultBox.Text = yoshino.Histories[yoshino.Histories.Count - 1].result;
-                }
-            }
+            CommandLine.UpdateLayout();
+            CommandLine.Height = Math.Min(Math.Max(CommandLine.ExtentHeight + 6, CommandLine.MinHeight), 250);
         }
 
-        private void EnterButton_Click(object sender, RoutedEventArgs e)
+        private void EnterCommand()
         {
             string command = CommandLine.Text;
             
@@ -98,7 +103,7 @@ namespace YoshinoShell
 
             CommandLine.Text = "";
             ResultBox.Text = "";
-            yoshino.Run(command);
+            yoshino.Enter(command);
         }
 
         private void Shutdown()

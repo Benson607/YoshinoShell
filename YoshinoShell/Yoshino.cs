@@ -13,7 +13,11 @@ namespace YoshinoShell
         public TextBox PWDTextBox = new TextBox();
         public TextBox UIBox = new TextBox();
 
+        public ListBox HistoryBox = new ListBox();
+
         public List<ShellHistory> Histories = new List<ShellHistory>();
+
+        private bool executing = false;
 
         public int LookingIndex { get; private set; } = -1;
 
@@ -23,11 +27,12 @@ namespace YoshinoShell
 
         private PowerShell? CurrentPowershell;
 
-        public Yoshino(TextBox command_line_text_box, TextBox ui_box, TextBox pwd_text_box)
+        public Yoshino(TextBox command_line_text_box, TextBox ui_box, TextBox pwd_text_box, ListBox history_box)
         {
             CommandLineTextBox = command_line_text_box;
             UIBox = ui_box;
             PWDTextBox = pwd_text_box;
+            HistoryBox = history_box;
 
             var ui = new YoshinoUI
             (
@@ -41,6 +46,23 @@ namespace YoshinoShell
             var host = new YoshinoHost(ui);
             _shared_runspace = RunspaceFactory.CreateRunspace(host);
             _shared_runspace.Open();
+
+            using (var power_shell = PowerShell.Create())
+            {
+                power_shell.Runspace = _shared_runspace;
+                power_shell.AddScript(@"
+                    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+                    if (Test-Path $PROFILE.CurrentUserAllHosts) { . $PROFILE.CurrentUserAllHosts }
+                ").Invoke();
+
+                if (power_shell.HadErrors)
+                {
+                    foreach (var err in power_shell.Streams.Error)
+                    {
+                        Debug.WriteLine("[PROFILE INIT ERROR] " + err.ToString());
+                    }
+                }
+            }
 
             UpdatePWDText();
         }
@@ -172,18 +194,27 @@ namespace YoshinoShell
             UIBox.Text = "";
         }
 
-        public async void Run(String command, bool Looking = true)
+        public async void Enter(String command, bool Looking = true)
         {
             if (command == "")
             {
                 return;
             }
 
-            await ExecutePowerShellAsync(command, Looking);
+            if (executing)
+            {
+
+            }
+            else
+            {
+                await ExecutePowerShellAsync(command, Looking);
+            }
         }
 
         public void Execute(String command)
         {
+            executing = true;
+
             try
             {
                 using (var power_shell = PowerShell.Create())
@@ -203,6 +234,8 @@ namespace YoshinoShell
             }
 
             UpdatePWDText();
+
+            executing = false;
         }
 
         public void Interrupt()
@@ -222,6 +255,8 @@ namespace YoshinoShell
 
         private async Task ExecutePowerShellAsync(string command, bool Looking)
         {
+            executing = true;
+
             await Task.Run(() =>
             {
                 using (var power_shell = PowerShell.Create())
@@ -258,6 +293,8 @@ namespace YoshinoShell
                     UpdatePWDText();
                 }
             });
+
+            executing = false;
         }
 
         private PSDataCollection<PSObject> BindPowerShellDataAddedEvent(PowerShell power_shell, ShellHistory history)
