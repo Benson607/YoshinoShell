@@ -18,7 +18,6 @@ namespace YoshinoShell
             _inputProvider = inputProvider;
         }
 
-        // normal output
         //public override void Write(ConsoleColor foregroundColor, ConsoleColor backgroundColor, string value) => _outputHandler(value);
         //public override void Write(string value) => _outputHandler(value);
         //public override void WriteLine(string value) => _outputHandler(value + "\n");

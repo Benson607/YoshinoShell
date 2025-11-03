@@ -38,15 +38,13 @@ namespace YoshinoShell
 
         private void ReadArgs()
         {
-            string[] args = Environment.GetCommandLineArgs();
-
-            for (int i = 1; i < args.Length; i++)
+            for (int i = 0; i < App.args.Length; i++)
             {
-                if (args[i] == "-p")
+                if (App.args[i] == "-p")
                 {
-                    if (i + 1 < args.Length)
+                    if (i + 1 < App.args.Length)
                     {
-                        yoshino.Execute($"Set-Location {args[++i]}");
+                        yoshino.Execute($"Set-Location \"{App.args[++i]}\"");
                     }
                 }
             }
